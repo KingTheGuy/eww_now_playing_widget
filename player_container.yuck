@@ -1,0 +1,199 @@
+;REQUIREMENTS:
+  ; convert :convert between image formats as well as resize an image, blur, crop, despeckle, dither, draw on, flip, join, re-sample, and much more.
+  ; playerctl
+  ; material icons(FONT)
+;OPTIONAL:
+  ; lua
+
+(defvar player_width 260)
+(defvar player_height 140)
+
+(defvar player_padding "30")
+(defvar player_background_border_radius "10px")
+
+(defvar load_player_background true)
+(defvar more_info false)
+
+; NOTE: parse these myself instead of having multiples
+(deflisten now_playing_artist
+  "playerctl --follow metadata --format '{{ artist }}'"
+  ; "right so like nothing to see here i just wanna know if it will overflow or not cuz like yea it should"
+)
+(deflisten now_playing_title
+  "playerctl --follow metadata --format '{{ title }}'"
+  ; "right so like nothing to see here i just wanna know if it will overflow or not cuz like yea it should"
+)
+
+(deflisten now_playing_status
+  "playerctl --follow metadata --format {{status}}"
+)
+
+(deflisten now_playing_image
+  "playerctl --follow metadata mpris:artUrl"
+)
+(deflisten now_playing_length
+  "playerctl --follow metadata --format '{{ mpris:length }}'"
+)
+(deflisten now_playing_position
+  "playerctl --follow position --format '{{ position }}'"
+)
+(defvar last_image "")
+
+(deflisten update_player_blurred_image
+  "bash/blur_image.sh"
+)
+
+(defvar player_blured_image
+  "null"
+)
+
+(defwidget audio_controls[]
+  (box
+    :valign "center"
+    :halign "center"
+    :width {player_width - 100}
+    :orientation "h"
+    :class "audio_controls"
+    :space-evenly true
+    :spacing 50
+    (box
+      :visible false
+      {update_player_blurred_image}
+    )
+    (button
+      :onclick "playerctl previous"
+      ; ""
+      ""
+    )
+    (button
+      :onclick "playerctl play-pause"
+      {now_playing_status != "Playing"? "":""}
+      
+    )
+    (button
+      :onclick "playerctl next"
+      ; ""
+      ""
+    )
+  )    
+)
+
+(defwidget player_progress []
+    (box
+      ; :visible {more_info? "true":"false"}
+      :halign "center"
+      :orientation "v"
+      :space-evenly false
+      :class "player_time"
+      :width {player_width - player_padding}
+      (progress
+        :value  { round(now_playing_position / 1000000,0)  / round(now_playing_length / 1000000,0)  * 100 }
+      )
+    )
+)
+
+(defwidget player_info[]
+  (box
+    :space-evenly false
+    :orientation "v"
+    :valign "center"
+    :halign "start"
+    :spacing 6
+    :tooltip "${now_playing_title} by ${now_playing_artist}"
+    (label
+      :halign "start"
+      :limit-width {player_width - player_padding}
+      :text {now_playing_title}
+      :style "color:white;font-size:xx-large;"
+    )
+    (label
+      :halign "start"
+      :limit-width 300
+      :style "color:white;font-size:large;"
+      :text {now_playing_artist}
+    )
+  )
+)
+
+(defwidget album_cover []
+  (box
+    ; :height 100
+    ; :width 100
+    :valign "center"
+    :halign "start"
+    :space-evenly true
+    (box
+      :height 100
+      :width 100
+      :style "margin:10px;border-radius:10px;background:center no-repeat url('${replace(now_playing_image,"file://","")}')"
+    )
+  )
+)
+
+(defwidget audio_main[]
+  (box ;player container
+    :valign "start"
+    :orientation "v"
+    :space-evenly false
+    (overlay
+      (revealer
+        :reveal {last_image != now_playing_image? false:true}
+        :transition "crossfade"
+        :duration "2s"
+        :halign "center"
+        :valign "center"
+        (box
+          :height {player_height * 1.5}
+          :width {player_width * 1.5}
+          :style "border-radius:${player_background_border_radius};background:center no-repeat url('${player_blured_image}');background-size:cover;opacity:0.6;"
+        )
+      )
+    (eventbox
+      :onscroll 'lua lua/player_scroll.lua {}'
+      :onhover 'eww update more_info="true"'
+      :onhoverlost 'eww update more_info="false"'
+      (box
+        :orientation "v"
+        :spacing 8
+        :space-evenly false
+        :valign "start"
+        :style "padding:${player_padding}px;"
+        (box
+          :space-evenly false
+          :spacing 6
+          (album_cover)
+          (player_info)
+        )
+        ; (revealer
+        ;   :reveal {more_info? "true":"false"}
+          (player_progress)
+        ; )
+        (audio_controls)
+      )
+    )    
+    )
+  )
+)
+
+
+(defwindow player_container
+  :monitor 0
+  :stacking "overlay"
+  :windowtype "dock"
+  :exclusive false
+  :geometry (geometry 
+             :x "1.5%"
+             :y "2%"
+             :anchor "left top"
+            )
+  (box
+    :style "background:none;"
+    (eventbox 
+      :onclick "eww close player_container"
+      :style "border-radius:${player_background_border_radius};opacity:1;background-color:black;"
+      :class "player_container"
+      (audio_main)
+    )
+  )
+)
+

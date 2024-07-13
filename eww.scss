@@ -1,0 +1,32 @@
+.audio_controls button {
+  padding: 8px;
+  border-radius: 10px;
+  background: none;
+  border: none;
+}
+
+.audio_controls button:hover {
+  background: rgba(256, 256, 256, 0.8);
+  color: black;
+}
+
+.player_time {
+  background-color: white;
+  opacity: 0.3;
+}
+
+.player_background {
+  animation: load;
+  animation-duration: 2s;
+  animation-fill-mode: forwards;
+}
+
+@keyframes load {
+  0% {
+    opacity: 0;
+  }
+
+  100% {
+    opacity: 0.6;
+  }
+}
